@@ -85,7 +85,9 @@ const server = createServer(async (req, res) => {
     }
     if (p === '/api/settings' && req.method === 'POST') {
       const body = await readBody(req)
-      await writeFile(SETTINGS, JSON.stringify(body, null, 2) + '\n', 'utf-8')
+      // 合并而非覆盖：保留 siteCreated 等面板里没有的字段
+      const existing = JSON.parse(await readFile(SETTINGS, 'utf-8'))
+      await writeFile(SETTINGS, JSON.stringify({ ...existing, ...body }, null, 2) + '\n', 'utf-8')
       return sendJSON(res, 200, { ok: true })
     }
     if (p === '/api/posts' && req.method === 'GET') {

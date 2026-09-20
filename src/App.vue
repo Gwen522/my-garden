@@ -48,7 +48,8 @@ function calcAge(birthday) {
   const now = new Date()
   let y = now.getFullYear() - b.getFullYear()
   let m = now.getMonth() - b.getMonth()
-  if (m < 0) { y--; m += 12 }
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) { y--; m += 12 }
+  if (now.getDate() < b.getDate()) m--
   return { y, m }
 }
 

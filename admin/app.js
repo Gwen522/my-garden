@@ -19,6 +19,7 @@ async function loadSettings() {
   $('sWindow').value = String(s.timeWindowMonths || 3)
   $('sTheme').value = s.theme || 'paper'
   $('siteName').textContent = s.title || '管理面板'
+  $('siteCreatedLine').textContent = s.siteCreated ? `建站日：${s.siteCreated}（自动记录，无需修改）` : ''
   document.body.dataset.theme = s.theme || 'paper'
 }
 
