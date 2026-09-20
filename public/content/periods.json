@@ -1,0 +1,24 @@
+[
+  {
+    "id": "p-fujian",
+    "name": "福建",
+    "start": "2005-05",
+    "end": "2023-08",
+    "summary": "出生并长大，从小学到高中，前十八年。"
+  },
+  {
+    "id": "p-nankai",
+    "name": "南开",
+    "start": "2023-08",
+    "end": "",
+    "summary": "来到天津，南开大学，本科。"
+  },
+  {
+    "id": "p-tencent",
+    "name": "腾讯实习",
+    "start": "2026-06",
+    "end": "2026-09",
+    "parentId": "p-nankai",
+    "summary": "上海 · 腾讯 IEG 云游戏部门实习。"
+  }
+]

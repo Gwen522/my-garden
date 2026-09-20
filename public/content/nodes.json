@@ -1,0 +1,23 @@
+[
+  {
+    "id": "n-taishan",
+    "date": "2024-04-04",
+    "title": "清明登泰山",
+    "desc": "第一次爬泰山，看日出。",
+    "location": "山东泰安"
+  },
+  {
+    "id": "n-tencent",
+    "date": "2026-06-01",
+    "title": "入职腾讯实习",
+    "desc": "上海 · IEG 云游戏部门。",
+    "location": "上海"
+  },
+  {
+    "id": "n-garden",
+    "date": "2026-09-20",
+    "title": "花园动工",
+    "desc": "这座网站的第一天。",
+    "location": "天津"
+  }
+]

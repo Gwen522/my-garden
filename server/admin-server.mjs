@@ -13,6 +13,8 @@ const ROOT = path.resolve(__dirname, '..')
 const CONTENT = path.join(ROOT, 'public', 'content')
 const POSTS = path.join(CONTENT, 'posts')
 const SETTINGS = path.join(CONTENT, 'settings.json')
+const PERIODS = path.join(CONTENT, 'periods.json')
+const NODES = path.join(CONTENT, 'nodes.json')
 const ADMIN = path.join(__dirname, '..', 'admin')
 const PORT = Number(process.env.PORT || 5174)
 
@@ -79,6 +81,16 @@ function parsePostMeta(text) {
   return { ...meta, body: (m[2] || '').trim() }
 }
 
+async function readJson(file, fallback) {
+  try { return JSON.parse(await readFile(file, 'utf-8')) } catch { return fallback }
+}
+
+async function writeJson(file, data) {
+  const out = JSON.stringify(data, null, 2) + '\n'
+  JSON.parse(out) // 写前校验
+  await writeFile(file, out, 'utf-8')
+}
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://127.0.0.1:${PORT}`)
@@ -118,6 +130,25 @@ const server = createServer(async (req, res) => {
       if (!name || !/^[\w.-]+\.md$/.test(name)) return sendJSON(res, 400, { ok: false, error: '文件名不合法' })
       await rm(path.join(POSTS, name))
       return sendJSON(res, 200, { ok: true })
+    }
+    // ---------- 集合：时期 / 节点 ----------
+    if (p === '/api/periods' || p === '/api/nodes') {
+      const file = p === '/api/periods' ? PERIODS : NODES
+      if (req.method === 'GET') return sendJSON(res, 200, await readJson(file, []))
+      if (req.method === 'POST') {
+        const item = await readBody(req)
+        const list = await readJson(file, [])
+        item.id = item.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+        list.push(item)
+        await writeJson(file, list)
+        return sendJSON(res, 200, { ok: true, id: item.id })
+      }
+      if (req.method === 'DELETE') {
+        const id = url.searchParams.get('id')
+        const list = await readJson(file, [])
+        await writeJson(file, list.filter((i) => i.id !== id))
+        return sendJSON(res, 200, { ok: true })
+      }
     }
     if (p === '/api/status' && req.method === 'GET') {
       const { stdout } = await execFileAsync('git', ['status', '--porcelain'], { cwd: ROOT })

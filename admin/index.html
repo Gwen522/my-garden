@@ -54,6 +54,39 @@
           <button type="submit" class="btn-primary btn-block">保存并发布</button>
         </form>
       </section>
+
+      <section class="card wide">
+        <h2>时期管理 <span class="count" id="periodCount"></span></h2>
+        <form id="periodForm">
+          <div class="row">
+            <label>名称 <input id="pName" type="text" placeholder="如：南开" /></label>
+            <label>开始 <input id="pStart" type="month" /></label>
+            <label>结束（空=至今）<input id="pEnd" type="month" /></label>
+          </div>
+          <div class="row">
+            <label>所属时期
+              <select id="pParent"><option value="">— 主时期 —</option></select>
+            </label>
+            <label>概括 <input id="pSummary" type="text" placeholder="一句话概括" /></label>
+          </div>
+          <button type="submit" class="btn-ghost">添加时期</button>
+        </form>
+        <ul id="periodList" class="post-list"></ul>
+      </section>
+
+      <section class="card wide">
+        <h2>节点管理 <span class="count" id="nodeCount"></span></h2>
+        <form id="nodeForm">
+          <div class="row">
+            <label>日期 <input id="nDate" type="date" /></label>
+            <label>标题 <input id="nTitle" type="text" placeholder="如：清明登泰山" /></label>
+            <label>地点 <input id="nLoc" type="text" placeholder="如：山东泰安" /></label>
+          </div>
+          <label>描述 <input id="nDesc" type="text" placeholder="一句话" /></label>
+          <button type="submit" class="btn-ghost">添加节点</button>
+        </form>
+        <ul id="nodeList" class="post-list"></ul>
+      </section>
     </main>
 
     <footer class="foot">本地面板 · 只监听 127.0.0.1 · 保存并发布 = 写文件 + git 提交 + 推送</footer>
