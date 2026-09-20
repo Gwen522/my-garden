@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>回廊 · 交互概念 demo v4</title>
+<style>
+  :root {
+    --ry: 46%;              /* 带子中心线位置 */
+    --bg: #F2EEE3;
+    --ink: #2B2926;
+    --ink-2: #6E6A5E;
+    --band: #E5DFD0;
+    --hair: #B9B2A0;
+    --card: #FDFBF7;
+    --line: #E2DCCC;
+    --glow: rgba(42, 41, 38, 0.10);
+    --c-fujian: #8A5A2B;
+    --c-nankai: #4A6B8A;
+    --c-tencent: #7A6BA0;
+    --c-now: #B03A2E;
+    --shadow: 0 10px 30px rgba(42, 41, 38, 0.12), 0 2px 8px rgba(42, 41, 38, 0.06);
+    --serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  }
+  body[data-theme="neon"] {
+    --bg: #0B0E17;
+    --ink: #E6E8F0;
+    --ink-2: #8B93A7;
+    --band: rgba(230, 232, 240, 0.10);
+    --hair: #2A3348;
+    --card: #131826;
+    --line: rgba(34, 211, 238, 0.25);
+    --glow: rgba(34, 211, 238, 0.12);
+    --c-fujian: #F97316;
+    --c-nankai: #22D3EE;
+    --c-tencent: #E879F9;
+    --c-now: #F43F5E;
+    --shadow: 0 0 30px rgba(34, 211, 238, 0.12), 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Roboto', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    overflow: hidden;
+    transition: background 0.5s, color 0.5s;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(255,255,255,0.55), transparent 60%),
+      radial-gradient(900px 400px at 85% 110%, rgba(74,107,138,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  body[data-theme="neon"]::before {
+    background:
+      radial-gradient(1000px 500px at 80% -10%, rgba(34,211,238,0.10), transparent 60%),
+      radial-gradient(800px 500px at 10% 110%, rgba(232,121,249,0.08), transparent 60%);
+  }
+
+  .viewport {
+    position: fixed; inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+  .viewport.dragging { cursor: grabbing; }
+  .world {
+    position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .track { position: absolute; left: 0; top: 0; width: 1500px; height: 100%; }
+
+  /* ---------- 带子（中心线 = --ry） ---------- */
+  .ribbon {
+    position: absolute; left: 20px; right: 20px;
+    top: calc(var(--ry) - 5px); height: 10px;
+    border-radius: 999px;
+    background: var(--band);
+    box-shadow: inset 0 0 0 1px var(--hair);
+  }
+  .thread {
+    position: absolute; top: var(--ry); height: 3px;
+    border-radius: 999px;
+    transform: translateY(-50%);
+    box-shadow: 0 0 10px var(--glow);
+    transition: filter 0.2s;
+  }
+  .thread.hot { filter: brightness(1.3); }
+  .thread.sub { top: calc(var(--ry) - 14px); }
+  .thread.future { border: 1px dashed var(--hair); background: transparent !important; box-shadow: none; }
+
+  /* 此刻窗口带 = 「至今」所在区域 */
+  .window-band {
+    position: absolute; top: var(--ry); height: 22px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: var(--glow);
+    border-left: 1px solid var(--hair);
+    border-right: 1px solid var(--hair);
+  }
+
+  /* 时期悬停热区 */
+  .hit {
+    position: absolute; top: var(--ry); height: 60px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    border-radius: 10px;
+    z-index: 2;
+  }
+  .hit:hover { background: var(--glow); }
+
+  /* 节点珠子 + 隐形命中圈 */
+  .node-dot {
+    position: absolute; top: var(--ry);
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--card);
+    border: 2.5px solid var(--c-now);
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 3;
+  }
+  .node-dot:hover { transform: translate(-50%, -50%) scale(1.6); }
+  .node-hit {
+    position: absolute; top: var(--ry);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 4;
+  }
+
+  /* 至今箭头（无竖线） */
+  .now-arrow {
+    position: absolute; left: 0; top: var(--ry);
+    width: 0; height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 16px solid var(--c-now);
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 6px var(--c-now));
+    animation: pulse-arrow 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse-arrow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .now-tag {
+    position: absolute; left: 24px; top: var(--ry);
+    transform: translateY(-50%);
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--c-now);
+    background: var(--card);
+    border: 1px solid var(--c-now);
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
+  }
+
+  /* ---------- 时期气泡（带子上方，尾巴朝下） ---------- */
+  .bubble {
+    position: absolute;
+    left: 0; top: var(--ry);
+    width: 190px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 11px 13px;
+    cursor: pointer;
+    transform: translate(-50%, calc(-100% - var(--up, 30px)));
+    transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+    z-index: 6;
+  }
+  .bubble::before {
+    content: '';
+    position: absolute; left: 50%;
+    top: calc(100% + 7px);
+    width: 1px;
+    height: calc(var(--up, 30px) - 16px);
+    background: var(--hair);
+    opacity: 0.45;
+  }
+  .bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -7px;
+    width: 13px; height: 13px;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .bubble:hover, .bubble.big {
+    transform: translate(-50%, calc(-100% - var(--up, 30px))) scale(1.04);
+    border-color: var(--ink-2);
+    box-shadow: 0 14px 36px rgba(42, 41, 38, 0.18), 0 2px 8px rgba(42, 41, 38, 0.08);
+    z-index: 7;
+  }
+  .bubble .b-name { font-family: var(--serif); font-size: 14px; font-weight: 700; letter-spacing: 2px; }
+  .bubble .b-range { font-size: 10px; color: var(--ink-2); margin: 2px 0 6px; }
+  .bubble .b-text { font-size: 11px; color: var(--ink-2); line-height: 1.55; }
+  .bubble .img-slot {
+    height: 48px;
+    border: 1px dashed var(--hair);
+    border-radius: 8px;
+    margin-top: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--ink-2); letter-spacing: 1px;
+  }
+  /* 浓缩时期（如前十八年）：更紧凑 */
+  .bubble.compact { width: 138px; padding: 9px 11px; }
+  .bubble.compact .b-name { font-size: 12px; }
+  .bubble.compact .b-range { margin: 2px 0 4px; }
+
+  /* ---------- 节点气泡（带子下方，尾巴朝上） ---------- */
+  .bubble.node-b {
+    width: 138px;
+    padding: 9px 11px;
+    transform: translate(-50%, calc(100% + var(--drop, 30px)));
+  }
+  .bubble.node-b::before {
+    top: calc(-1 * (var(--drop, 30px) - 8px));
+    height: calc(var(--drop, 30px) - 8px);
+  }
+  .bubble.node-b::after {
+    top: -7px; bottom: auto;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    border-right: none; border-bottom: none;
+  }
+  .bubble.node-b:hover, .bubble.node-b.big {
+    transform: translate(-50%, calc(100% + var(--drop, 30px))) scale(1);
+  }
+  .bubble.node-b .b-name { font-size: 12px; }
+  .bubble.node-b .b-desc { display: none; margin-top: 5px; }
+  .bubble.node-b.big { width: 172px; }
+  .bubble.node-b.big .b-desc { display: block; }
+
+  /* ---------- 刻度（移到下方） ---------- */
+  .axis { position: absolute; left: 20px; right: 20px; top: 86%; height: 30px; }
+  .tick { position: absolute; font-size: 10px; color: var(--ink-2); letter-spacing: 1px; transform: translateX(-50%); }
+  .tick::before { content: ''; position: absolute; left: 50%; top: -6px; width: 1px; height: 6px; background: var(--hair); }
+  .tick.future { opacity: 0.6; }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    position: fixed; left: 0; right: 0; bottom: 20px;
+    display: flex; justify-content: center; gap: 12px; align-items: center;
+    font-size: 12px; color: var(--ink-2);
+    pointer-events: none;
+    z-index: 20;
+    flex-wrap: wrap;
+  }
+  .hud b { color: var(--ink); font-weight: 600; }
+  .hud .sep { opacity: 0.4; }
+  .btn {
+    pointer-events: auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { color: var(--ink); border-color: var(--ink-2); }
+  .zoom-readout { min-width: 44px; text-align: center; }
+  .theme-btn { position: fixed; top: 16px; right: 16px; z-index: 20; }
+  .title-hint {
+    position: fixed; top: 16px; left: 16px; z-index: 20;
+    font-family: var(--serif); font-size: 15px; letter-spacing: 3px; color: var(--ink);
+  }
+  .title-hint small { display: block; font-family: sans-serif; font-size: 10px; letter-spacing: 1px; color: var(--ink-2); margin-top: 2px; }
+</style>
+</head>
+<body data-theme="paper">
+
+  <div class="title-hint">回廊<small>滚轮缩放 · 拖拽平移 · 悬停节点看大事</small></div>
+  <button class="btn theme-btn" id="themeBtn">切到霓虹</button>
+
+  <div class="viewport" id="viewport">
+    <div class="world" id="world">
+      <div class="track" id="track"></div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <span>滚轮 <b>缩放</b></span><span class="sep">·</span>
+    <span>拖拽 <b>平移</b></span><span class="sep">·</span>
+    <span>点击 <b>聚焦</b></span>
+    <button class="btn" id="zin">＋</button>
+    <span class="zoom-readout" id="zout">100%</span>
+    <button class="btn" id="zde">－</button>
+    <button class="btn" id="reset">复位</button>
+  </div>
+
+<script>
+(function () {
+  // ---------- 数据（与网站同源示例） ----------
+  const now = new Date(2026, 8, 20) // 演示固定 2026-09-20
+  const WINDOW_MONTHS = 3
+  const P = (y, m, d) => new Date(y, m - 1, d || 1)
+
+  const periods = [
+    { id: 'fujian',  name: '福建',     start: P(2005, 5), end: P(2023, 8), color: 'var(--c-fujian)',  summary: '前十八年，小学到高中。' },
+    { id: 'nankai',  name: '南开',     start: P(2023, 8), end: null,        color: 'var(--c-nankai)',  summary: '来到天津，南开大学，本科。' },
+    { id: 'tencent', name: '腾讯实习', start: P(2026, 6), end: P(2026, 9), parent: 'nankai', color: 'var(--c-tencent)', summary: '上海 · IEG 云游戏部门实习。' },
+  ]
+  const nodes = [
+    { date: P(2024, 4, 4),  title: '清明登泰山', loc: '山东泰安', desc: '第一次爬泰山，看日出。' },
+    { date: P(2026, 6, 1),  title: '入职腾讯',   loc: '上海',     desc: 'IEG 云游戏部门。' },
+    { date: P(2026, 9, 20), title: '花园动工',   loc: '天津',     desc: '这座网站的第一天。' },
+  ]
+
+  // ---------- 布局计算 ----------
+  const TRACK_W = 1500
+  const RIBBON_Y = 0.46
+  const main = periods.filter((p) => !p.parent).sort((a, b) => a.start - b.start)
+  const sub = periods.filter((p) => p.parent)
+  const years = (p) => ((p.end || now) - p.start) / (365.25 * 864e5)
+  const mainPeriodOf = (d) => main.find((p) => d >= p.start && d <= (p.end || now))
+  const nodeCount = (p) => nodes.filter((n) => mainPeriodOf(n.date) === p).length
+  // 浓缩：已结束 + 年头久 + 无节点（没什么好讲的，如前十八年）
+  const isCollapsed = (p) => !!(p.end && years(p) >= 10 && nodeCount(p) === 0)
+  // 宽度：浓缩时期 ≈ 节点大小；其余固定短底宽，节点越多越撑开
+  const flex = (p) => isCollapsed(p) ? 0.35 : 1 + 0.25 * nodeCount(p)
+  const totalFlex = main.reduce((s, p) => s + flex(p), 0) + 1 // +1 将来
+  let x = 20
+  const segs = main.map((p) => {
+    const w = (flex(p) / totalFlex) * (TRACK_W - 40)
+    const o = { p, left: x, width: w, right: x + w }
+    x = o.right
+    return o
+  })
+  const futureLeft = x
+  const futureWidth = (1 / totalFlex) * (TRACK_W - 40)
+
+  const segOf = (id) => segs.find((s) => s.p.id === id)
+  const ratioIn = (d, seg) => {
+    const s = seg.p.start, e = seg.p.end || now
+    return Math.min(Math.max((d - s) / (e - s), 0), 1)
+  }
+  const xOfNode = (d) => {
+    const mp = mainPeriodOf(d)
+    const seg = mp ? segOf(mp.id) : null
+    return seg ? seg.left + ratioIn(d, seg) * seg.width : futureLeft
+  }
+
+  // ---------- 构建 DOM ----------
+  const track = document.getElementById('track')
+  const focus = { id: null }
+
+  // 此刻窗口带（「至今」区域）
+  const wStart = new Date(now.getTime() - WINDOW_MONTHS * 30.44 * 864e5)
+  const openSeg = segs.find((s) => !s.p.end)
+  const nowX = openSeg ? openSeg.right : 0
+  if (openSeg) {
+    const a = Math.max((wStart - openSeg.p.start) / ((openSeg.p.end || now) - openSeg.p.start), 0)
+    const band = document.createElement('div')
+    band.className = 'window-band'
+    band.style.left = (openSeg.left + a * openSeg.width) + 'px'
+    band.style.width = ((1 - a) * openSeg.width) + 'px'
+    track.append(band)
+  }
+
+  // 时期丝线 + 热区 + 常驻气泡
+  const periodBubs = []
+  function makePeriodBubble(sp, cx, collapsed) {
+    const b = document.createElement('div')
+    b.className = 'bubble' + (collapsed ? ' compact' : '')
+    b.dataset.id = sp.id
+    b.style.left = cx + 'px'
+    b.innerHTML =
+      '<div class="b-name">' + sp.name + '</div>' +
+      '<div class="b-range">' + sp.start.getFullYear() + '.' +
+        String(sp.start.getMonth() + 1).padStart(2, '0') + ' → ' +
+        (sp.end ? sp.end.getFullYear() + '.' + String(sp.end.getMonth() + 1).padStart(2, '0') : '至今') + '</div>' +
+      '<div class="b-text">' + sp.summary + '</div>' +
+      (sp.end ? '' : '<div class="img-slot">图片位 · 将来可放照片</div>')
+    track.append(b)
+    periodBubs.push({ x: cx, w: collapsed ? 138 : 190, el: b, segWidth: 0 })
+    return b
+  }
+
+  segs.forEach((s) => {
+    const t = document.createElement('div')
+    t.className = 'thread'
+    t.style.left = s.left + 'px'
+    t.style.width = s.width + 'px'
+    t.style.background = s.p.color
+    t.dataset.id = s.p.id
+    track.append(t)
+    const hit = document.createElement('div')
+    hit.className = 'hit'
+    hit.style.left = s.left + 'px'
+    hit.style.width = s.width + 'px'
+    track.append(hit)
+    const b = makePeriodBubble(s.p, s.left + s.width / 2, isCollapsed(s.p))
+    periodBubs[periodBubs.length - 1].segWidth = s.width
+    const on = (v) => { t.classList.toggle('hot', v); b.classList.toggle('big', v) }
+    hit.onmouseenter = () => on(true)
+    hit.onmouseleave = () => { if (focus.id !== s.p.id) on(false) }
+    hit.onclick = (e) => {
+      e.stopPropagation()
+      focus.id = focus.id === s.p.id ? null : s.p.id
+      on(focus.id === s.p.id)
+    }
+    b.onmouseenter = () => on(true)
+    b.onmouseleave = () => { if (focus.id !== s.p.id) on(false) }
+    b.onclick = (e) => {
+      e.stopPropagation()
+      focus.id = focus.id === s.p.id ? null : s.p.id
+      on(focus.id === s.p.id)
+    }
+  })
+
+  // 嵌套子时期
+  sub.forEach((sp) => {
+    const seg = segOf(sp.parent)
+    if (!seg) return
+    const a = ratioIn(sp.start, seg), b2 = ratioIn(sp.end, seg)
+    const t = document.createElement('div')
+    t.className = 'thread sub'
+    t.style.left = (seg.left + a * seg.width) + 'px'
+    t.style.width = ((b2 - a) * seg.width) + 'px'
+    t.style.background = sp.color
+    t.dataset.id = sp.id
+    track.append(t)
+    const hit = document.createElement('div')
+    hit.className = 'hit'
+    hit.style.left = (seg.left + a * seg.width) + 'px'
+    hit.style.width = ((b2 - a) * seg.width) + 'px'
+    track.append(hit)
+    const bb = makePeriodBubble(sp, seg.left + ((a + b2) / 2) * seg.width, false)
+    const on = (v) => { t.classList.toggle('hot', v); bb.classList.toggle('big', v) }
+    hit.onmouseenter = () => on(true)
+    hit.onmouseleave = () => { if (focus.id !== sp.id) on(false) }
+    hit.onclick = (e) => { e.stopPropagation(); focus.id = focus.id === sp.id ? null : sp.id; on(focus.id === sp.id) }
+    bb.onmouseenter = () => on(true)
+    bb.onmouseleave = () => { if (focus.id !== sp.id) on(false) }
+    bb.onclick = (e) => { e.stopPropagation(); focus.id = focus.id === sp.id ? null : sp.id; on(focus.id === sp.id) }
+  })
+
+  // 将来（虚线）
+  const ft = document.createElement('div')
+  ft.className = 'thread future'
+  ft.style.left = futureLeft + 'px'
+  ft.style.width = futureWidth + 'px'
+  track.append(ft)
+
+  // 节点：珠子 + 命中圈 + 下方小气泡（悬停/点击变大）
+  const nodeBubs = []
+  nodes.forEach((n) => {
+    const nx = xOfNode(n.date)
+    const d = document.createElement('div')
+    d.className = 'node-dot'
+    d.style.left = nx + 'px'
+    track.append(d)
+    const h = document.createElement('div')
+    h.className = 'node-hit'
+    h.style.left = nx + 'px'
+    track.append(h)
+    const bb = document.createElement('div')
+    bb.className = 'bubble node-b'
+    bb.dataset.id = 'n-' + n.date.getTime()
+    bb.style.left = nx + 'px'
+    bb.innerHTML =
+      '<div class="b-name">' + n.title + '</div>' +
+      '<div class="b-range">' + n.date.getFullYear() + '.' +
+        String(n.date.getMonth() + 1).padStart(2, '0') + '.' +
+        String(n.date.getDate()).padStart(2, '0') +
+        (n.loc ? ' · ' + n.loc : '') + '</div>' +
+      '<div class="b-desc">' + n.desc + '</div>'
+    track.append(bb)
+    nodeBubs.push({ x: nx, w: 138, el: bb })
+    const on = (v) => { bb.classList.toggle('big', v) }
+    ;[d, h, bb].forEach((t) => {
+      t.onmouseenter = () => on(true)
+      t.onmouseleave = () => { if (focus.id !== bb.dataset.id) on(false) }
+      t.onclick = (e) => {
+        e.stopPropagation()
+        focus.id = focus.id === bb.dataset.id ? null : bb.dataset.id
+        on(focus.id === bb.dataset.id)
+      }
+    })
+  })
+
+  // 至今箭头
+  const nm = document.createElement('div')
+  nm.className = 'now-arrow'
+  nm.style.left = nowX + 'px'
+  track.append(nm)
+  const nt = document.createElement('div')
+  nt.className = 'now-tag'
+  nt.style.left = nowX + 'px'
+  nt.textContent = '至今'
+  track.append(nt)
+
+  // ---- 智能分布：全部从最底层开始，挤不下才抬升（不拥挤就贴近带子） ----
+  const pBands = []
+  periodBubs.forEach((bb) => {
+    let band = 0
+    while (pBands[band] && pBands[band].some((p) => bb.x - bb.w / 2 < p.right + 26 && bb.x + bb.w / 2 > p.left - 26)) band++
+    if (!pBands[band]) pBands[band] = []
+    pBands[band].push({ left: bb.x - bb.w / 2, right: bb.x + bb.w / 2 })
+    bb.el.style.setProperty('--up', (30 + band * 80) + 'px')
+  })
+
+  // ---- 节点在下方找空隙，挤不下就往下延伸 ----
+  nodeBubs.sort((a, b) => a.x - b.x)
+  const nBands = []
+  nodeBubs.forEach((bb) => {
+    let band = 0
+    for (;;) {
+      const last = nBands[band] && nBands[band][nBands[band].length - 1]
+      if (!last || bb.x - bb.w / 2 > last.right + 20) {
+        if (!nBands[band]) nBands[band] = []
+        nBands[band].push({ right: bb.x + bb.w / 2 })
+        break
+      }
+      band++
+    }
+    bb.el.style.setProperty('--drop', (30 + band * 84) + 'px')
+  })
+
+  // 刻度（移到下方，对齐段落边界）
+  const axis = document.createElement('div')
+  axis.className = 'axis'
+  const tickAt = (x, label, future) => {
+    const t = document.createElement('div')
+    t.className = 'tick' + (future ? ' future' : '')
+    t.style.left = x + 'px'
+    t.textContent = label
+    axis.append(t)
+  }
+  const yearAt = (seg, year) => {
+    const y0 = seg.p.start.getFullYear() + (seg.p.start.getMonth() + 1) / 12
+    const y1 = y0 + years(seg.p)
+    return seg.left + ((year - y0) / (y1 - y0)) * seg.width
+  }
+  tickAt(20, '2005')
+  if (segs[0].width > 240) [2010, 2015, 2020].forEach((y) => tickAt(yearAt(segs[0], y), String(y)))
+  segs.slice(0, -1).forEach((s) => { if (s.p.end) tickAt(s.right, String(s.p.end.getFullYear())) })
+  if (segs[1].width > 240) { tickAt(yearAt(segs[1], 2024), '2024'); tickAt(yearAt(segs[1], 2025), '2025') }
+  tickAt(segs[1].right, '现在', true)
+  tickAt(futureLeft + futureWidth, '2027', true)
+  track.append(axis)
+
+  // 点空白取消聚焦
+  const vp = document.getElementById('viewport')
+  vp.addEventListener('click', (e) => {
+    if (e.target === vp) {
+      focus.id = null
+      document.querySelectorAll('.bubble.big, .thread.hot').forEach((x) => x.classList.remove('big', 'hot'))
+    }
+  })
+
+  // ---------- 缩放 / 平移 ----------
+  const world = document.getElementById('world')
+  let scale = 1.6, tx = 0, ty = 0
+  function apply() {
+    world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'
+    document.getElementById('zout').textContent = Math.round(scale * 100) + '%'
+  }
+  function clamp() {
+    const vw = window.innerWidth, vh = window.innerHeight
+    const minT = Math.min(0, vw - TRACK_W * scale)
+    const maxT = Math.max(0, vw * 0.12)
+    tx = Math.min(maxT, Math.max(minT, tx))
+    const minY = Math.min(0, vh - window.innerHeight * scale)
+    ty = Math.min(20, Math.max(minY, ty))
+  }
+  function zoomAt(mx, factor) {
+    const ns = Math.min(3.2, Math.max(0.7, scale * factor))
+    const worldX = (mx - tx) / scale
+    tx = mx - worldX * ns
+    scale = ns
+    clamp()
+    apply()
+  }
+
+  vp.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    zoomAt(e.clientX, e.deltaY < 0 ? 1.08 : 0.92)
+  }, { passive: false })
+
+  let drag = null
+  vp.addEventListener('pointerdown', (e) => {
+    drag = { id: e.pointerId, x: e.clientX - tx, y: e.clientY - ty }
+    try { vp.setPointerCapture(e.pointerId) } catch (_) {}
+    vp.classList.add('dragging')
+  })
+  vp.addEventListener('pointermove', (e) => {
+    if (!drag || drag.id !== e.pointerId) return
+    tx = e.clientX - drag.x
+    ty = e.clientY - drag.y
+    clamp()
+    apply()
+  })
+  const endDrag = (e) => {
+    if (drag && drag.id === e.pointerId) { drag = null; vp.classList.remove('dragging') }
+  }
+  vp.addEventListener('pointerup', endDrag)
+  vp.addEventListener('pointercancel', endDrag)
+
+  document.getElementById('zin').onclick = () => zoomAt(window.innerWidth / 2, 1.2)
+  document.getElementById('zde').onclick = () => zoomAt(window.innerWidth / 2, 1 / 1.2)
+  document.getElementById('reset').onclick = () => {
+    scale = 1.6
+    tx = window.innerWidth * 0.5 - nowX * scale
+    ty = 0
+    clamp()
+    apply()
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { tx += 120; clamp(); apply() }
+    else if (e.key === 'ArrowRight') { tx -= 120; clamp(); apply() }
+    else if (e.key === '+' || e.key === '=') zoomAt(window.innerWidth / 2, 1.2)
+    else if (e.key === '-') zoomAt(window.innerWidth / 2, 1 / 1.2)
+    else if (e.key === '0') document.getElementById('reset').onclick()
+  })
+
+  // 主题切换
+  const themeBtn = document.getElementById('themeBtn')
+  themeBtn.onclick = () => {
+    const dark = document.body.dataset.theme === 'neon'
+    document.body.dataset.theme = dark ? 'paper' : 'neon'
+    themeBtn.textContent = dark ? '切到霓虹' : '切到纸墨'
+  }
+
+  // 初始视角：现在居中
+  scale = 1.6
+  tx = window.innerWidth * 0.5 - nowX * scale
+  clamp()
+  apply()
+})()
+</script>
+</body>
+</html>
