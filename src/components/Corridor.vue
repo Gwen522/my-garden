@@ -145,8 +145,8 @@ const offsets = computed(() => {
   }
   const pb = layout.value.periodBubbles.map((b) => ({ id: b.id, x: b.x, w: b.w }))
   const nb = layout.value.visNodes.map((n) => ({ id: n.id, x: n.x, w: 138 }))
-  Object.assign(up, assign(pb, 26, 80, 30))
-  Object.assign(down, assign(nb, 20, 84, 30))
+  Object.assign(up, assign(pb, 24, 60, 22))
+  Object.assign(down, assign(nb, 18, 56, 22))
   return { up, down }
 })
 
@@ -158,6 +158,13 @@ const ty = ref(0)
 const drag = ref(null)
 const hoverId = ref(null)
 const focusId = ref(null)
+const showZoom = ref(false)
+let zoomTipTimer = null
+let inertiaTimer = null
+let lastMove = null
+let pinchDist = null
+const vel = { x: 0, y: 0 }
+const pointers = new Map()
 
 const worldTransform = computed(() => `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`)
 const cw = () => (stripRef.value ? stripRef.value.offsetWidth : 600)
@@ -174,8 +181,13 @@ function clamp() {
   const minY = Math.min(0, h - h * scale.value)
   ty.value = Math.min(20, Math.max(minY, ty.value))
 }
+function stopInertia() {
+  if (inertiaTimer) { cancelAnimationFrame(inertiaTimer); inertiaTimer = null }
+  vel.x = 0; vel.y = 0
+}
+// 小幅缩放：0.7×–2.0×，够看清细节又不至于失控（手机画廊式手感）
 function zoomAt(mx, factor) {
-  const ns = Math.min(3.2, Math.max(0.7, scale.value * factor))
+  const ns = Math.min(2.0, Math.max(0.7, scale.value * factor))
   const wx = (mx - tx.value) / scale.value
   tx.value = mx - wx * ns
   scale.value = ns
@@ -184,34 +196,95 @@ function zoomAt(mx, factor) {
 // 初始/复位：整条时间线铺满画廊宽度
 function applyView() {
   if (!stripRef.value) return
+  stopInertia()
   const w = cw()
   scale.value = Math.max(0.6, w / 1600)
   tx.value = (w - TRACK_W * scale.value) / 2
   ty.value = 0
   clamp()
 }
+function showZoomTip() {
+  showZoom.value = true
+  clearTimeout(zoomTipTimer)
+  zoomTipTimer = setTimeout(() => { showZoom.value = false }, 1200)
+}
 function onWheel(e) {
   e.preventDefault()
+  stopInertia()
   const r = stripRef.value.getBoundingClientRect()
   zoomAt(e.clientX - r.left, e.deltaY < 0 ? 1.08 : 0.92)
+  showZoomTip()
 }
 function onDown(e) {
+  stopInertia()
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   const r = stripRef.value.getBoundingClientRect()
   drag.value = { id: e.pointerId, x: e.clientX - r.left - tx.value, y: e.clientY - r.top - ty.value }
   try { stripRef.value.setPointerCapture(e.pointerId) } catch (_) {}
   stripRef.value.classList.add('dragging')
 }
 function onMove(e) {
-  if (!drag.value || drag.value.id !== e.pointerId) return
   const r = stripRef.value.getBoundingClientRect()
-  tx.value = e.clientX - r.left - drag.value.x
-  ty.value = e.clientY - r.top - drag.value.y
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  const arr = [...pointers.values()]
+  // 双指捏合缩放：以两指中点为锚，小幅缩放
+  if (arr.length >= 2 && pinchDist) {
+    const d = Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y)
+    if (d > 0) {
+      zoomAt((arr[0].x + arr[1].x) / 2 - r.left, d / pinchDist)
+      showZoomTip()
+    }
+    pinchDist = d
+    return
+  }
+  if (arr.length >= 2) { pinchDist = Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y); return }
+  // 单指拖拽平移
+  if (!drag.value || drag.value.id !== e.pointerId) return
+  const nx = e.clientX - r.left - drag.value.x
+  const ny = e.clientY - r.top - drag.value.y
+  const t = performance.now()
+  if (lastMove) {
+    const dt = t - lastMove.t
+    if (dt > 0 && dt < 60) {
+      vel.x = ((nx - lastMove.x) / dt) * 16
+      vel.y = ((ny - lastMove.y) / dt) * 16
+    }
+  }
+  lastMove = { x: nx, y: ny, t }
+  tx.value = nx
+  ty.value = ny
   clamp()
 }
 function onUp(e) {
-  if (drag.value && drag.value.id === e.pointerId) {
-    drag.value = null
-    stripRef.value.classList.remove('dragging')
+  pointers.delete(e.pointerId)
+  pinchDist = null
+  const r = stripRef.value.getBoundingClientRect()
+  if (pointers.size === 1) {
+    // 剩一根手指：重新锚定继续拖
+    const [pid, pt] = [...pointers.entries()][0]
+    drag.value = { id: pid, x: pt.x - r.left - tx.value, y: pt.y - r.top - ty.value }
+    return
+  }
+  if (pointers.size > 0) return
+  if (!drag.value || drag.value.id !== e.pointerId) return
+  drag.value = null
+  stripRef.value.classList.remove('dragging')
+  lastMove = null
+  const vx = vel.x, vy = vel.y
+  if (e.type !== 'pointercancel' && Math.hypot(vx, vy) > 1.4) {
+    // 惯性滑行：速度逐帧衰减
+    const step = () => {
+      vel.x *= 0.92
+      vel.y *= 0.92
+      tx.value += vel.x
+      ty.value += vel.y
+      clamp()
+      if (Math.hypot(vel.x, vel.y) < 0.12 || !drag.value) { inertiaTimer = null; return }
+      inertiaTimer = requestAnimationFrame(step)
+    }
+    inertiaTimer = requestAnimationFrame(step)
+  } else {
+    vel.x = 0; vel.y = 0
   }
 }
 function onTrackClick(e) {
@@ -232,6 +305,8 @@ onMounted(() => {
   window.addEventListener('resize', applyView)
 })
 onBeforeUnmount(() => {
+  stopInertia()
+  clearTimeout(zoomTipTimer)
   const el = stripRef.value
   if (el) {
     el.removeEventListener('wheel', onWheel)
@@ -248,16 +323,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="corridor">
     <div class="corridor-head">
-      <h2>回廊</h2>
-      <div class="corridor-tools">
-        <span class="c-hint">滚轮缩放 · 拖拽平移 · 悬停/点击气泡</span>
-        <div class="zoom">
-          <button @click="zoomAt(cw() / 2, 1 / 1.2)">−</button>
-          <span>{{ Math.round(scale * 100) }}%</span>
-          <button @click="zoomAt(cw() / 2, 1.2)">＋</button>
-          <button @click="applyView">复位</button>
-        </div>
+      <div class="corridor-title">
+        <span class="cor-orn">❖</span>
+        <h2>回廊</h2>
+        <span class="cor-sub">长卷</span>
+        <span class="cor-orn">❖</span>
       </div>
+      <button class="c-reset" @click="applyView" title="回到整条时间线视图">复位</button>
     </div>
 
     <div v-if="layout.segs.length" ref="strip" class="c-strip">
@@ -289,7 +361,7 @@ onBeforeUnmount(() => {
           <!-- 时期气泡（常驻） -->
           <div v-for="b in layout.periodBubbles" :key="'b' + b.id" class="c-bubble"
                :class="{ compact: b.compact, big: isBig(b.id) }"
-               :style="{ left: b.x + 'px', '--up': (offsets.up[b.id] || 30) + 'px' }"
+               :style="{ left: b.x + 'px', '--up': (offsets.up[b.id] || 22) + 'px' }"
                @mouseenter="hoverId = b.id" @mouseleave="hoverId = null" @click.stop="toggleFocus(b.id)">
             <div class="b-name" :style="{ color: colorVar(b.colorIdx) }">{{ b.name }}</div>
             <div class="b-range">{{ b.range }}</div>
@@ -303,8 +375,10 @@ onBeforeUnmount(() => {
             <div class="c-dot-hit" :style="{ left: n.x + 'px' }"
                  @mouseenter="hoverId = n.id" @mouseleave="hoverId = null" @click.stop="toggleFocus(n.id)"></div>
             <div class="c-bubble c-node" :class="{ big: isBig(n.id) }"
-                 :style="{ left: n.x + 'px', '--drop': (offsets.down[n.id] || 30) + 'px' }"
+                 :style="{ left: n.x + 'px', '--drop': (offsets.down[n.id] || 22) + 'px' }"
                  @mouseenter="hoverId = n.id" @mouseleave="hoverId = null" @click.stop="toggleFocus(n.id)">
+              <img v-if="n.image" class="n-img" :src="n.image" alt="" loading="lazy" />
+              <div v-else class="n-img n-ph" :style="{ background: colorVar(2) }">{{ (n.title || '·')[0] }}</div>
               <div class="b-name">{{ n.title }}</div>
               <div class="b-range">{{ fmt(n.date) }}{{ n.location ? ' · ' + n.location : '' }}</div>
               <div v-if="n.desc" class="b-desc">{{ n.desc }}</div>
@@ -322,6 +396,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+      <transition name="c-fade">
+        <div v-if="showZoom" class="c-zoom-tip">{{ Math.round(scale * 100) }}%</div>
+      </transition>
     </div>
     <p v-else class="hint">回廊还空着，去面板添加时期和节点吧。</p>
   </div>
@@ -331,33 +408,45 @@ onBeforeUnmount(() => {
 .corridor { width: 100%; }
 .corridor-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   gap: 10px;
-  margin: 0 auto 14px;
-  padding: 0 20px;
+  margin: 0 auto 18px;
+  padding: 0 28px;
   max-width: 720px;
-  flex-wrap: wrap;
 }
+.corridor-title { display: flex; align-items: baseline; gap: 12px; }
+.corridor-title h2 {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  padding-left: 10px;
+}
+.cor-orn { color: var(--accent); font-size: 11px; }
+.cor-sub { font-size: 11px; color: var(--text-2); letter-spacing: 3px; }
 .corridor-tools { text-align: right; }
-.c-hint { font-size: 11px; color: var(--text-2); margin-top: 4px; display: block; }
-.zoom { display: flex; align-items: center; gap: 6px; margin-top: 4px; justify-content: flex-end; }
-.zoom button {
-  width: 28px; height: 28px;
+.c-reset {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  padding: 5px 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--card);
   color: var(--text-2);
-  font-size: 14px;
   cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
 }
-.zoom button:hover { color: var(--accent); border-color: var(--accent); }
-.zoom span { font-size: 11px; color: var(--text-2); min-width: 40px; text-align: center; }
+.c-reset:hover { color: var(--accent); border-color: var(--accent); }
 
 .c-strip {
   position: relative;
   width: 100%;
-  height: 540px;
+  height: 480px;
   overflow: hidden;
   background: transparent;
   cursor: grab;
@@ -371,7 +460,7 @@ onBeforeUnmount(() => {
 
 .c-ribbon {
   position: absolute; left: 20px; right: 20px;
-  top: calc(46% - 5px); height: 10px;
+  top: calc(46% - 4.5px); height: 9px;
   border-radius: 999px;
   background: var(--band);
   box-shadow: inset 0 0 0 1px var(--hair);
@@ -384,11 +473,11 @@ onBeforeUnmount(() => {
   transition: filter 0.2s;
 }
 .c-thread.hot { filter: brightness(1.25); }
-.c-thread.c-sub { top: calc(46% - 14px); }
+.c-thread.c-sub { top: calc(46% - 12px); }
 .c-thread.c-future { border: 1px dashed var(--hair); background: transparent !important; box-shadow: none; }
 
 .c-window {
-  position: absolute; top: 46%; height: 22px;
+  position: absolute; top: 46%; height: 20px;
   transform: translateY(-50%);
   border-radius: 999px;
   background: var(--glow);
@@ -407,11 +496,11 @@ onBeforeUnmount(() => {
 
 .c-dot {
   position: absolute; top: 46%;
-  width: 11px; height: 11px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: var(--card);
-  border: 2.5px solid var(--c-now);
+  border: 2px solid var(--c-now);
   cursor: pointer;
   z-index: 3;
   transition: transform 0.2s;
@@ -419,7 +508,7 @@ onBeforeUnmount(() => {
 .c-dot:hover { transform: translate(-50%, -50%) scale(1.6); }
 .c-dot-hit {
   position: absolute; top: 46%;
-  width: 44px; height: 44px;
+  width: 40px; height: 40px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   cursor: pointer;
@@ -429,9 +518,9 @@ onBeforeUnmount(() => {
 .c-now-arrow {
   position: absolute; left: 0; top: 46%;
   width: 0; height: 0;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-left: 16px solid var(--c-now);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 14px solid var(--c-now);
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 0 6px var(--c-now));
   animation: c-pulse 2.4s ease-in-out infinite;
@@ -453,24 +542,26 @@ onBeforeUnmount(() => {
 
 .c-bubble {
   position: absolute;
-  left: 0; top: 46%;
-  width: 190px;
+  left: 0;
+  top: calc(46% - var(--up, 22px));
+  width: 156px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 13px;
   box-shadow: var(--card-shadow);
-  padding: 11px 13px;
+  padding: 9px 11px;
   cursor: pointer;
-  transform: translate(-50%, calc(-100% - var(--up, 30px)));
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
   transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
   z-index: 6;
 }
 .c-bubble::before {
   content: '';
   position: absolute; left: 50%;
-  top: calc(100% + 7px);
+  top: calc(100% + 4px);
   width: 1px;
-  height: calc(var(--up, 30px) - 16px);
+  height: calc(var(--up, 22px) - 10px);
   background: var(--hair);
   opacity: 0.45;
 }
@@ -485,41 +576,85 @@ onBeforeUnmount(() => {
   transform: translateX(-50%) rotate(45deg);
 }
 .c-bubble.big {
-  transform: translate(-50%, calc(-100% - var(--up, 30px))) scale(1.04);
+  transform: translate(-50%, -100%) scale(1.06);
   border-color: var(--accent);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.12);
   z-index: 7;
 }
-.b-name { font-family: var(--font-serif); font-size: 14px; font-weight: 700; letter-spacing: 2px; }
-.b-range { font-size: 10px; color: var(--text-2); margin: 2px 0 6px; }
-.b-text { font-size: 11px; color: var(--text-2); line-height: 1.55; }
+.b-name { font-family: var(--font-serif); font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+.b-range { font-size: 10px; color: var(--text-2); margin: 2px 0 5px; }
+.b-text { font-size: 10.5px; color: var(--text-2); line-height: 1.5; }
 
-.c-bubble.compact { width: 138px; padding: 9px 11px; }
+.c-bubble.compact { width: 112px; padding: 8px 10px; }
 .c-bubble.compact .b-name { font-size: 12px; }
 
-/* 节点气泡：带子下方，尾巴朝上 */
+/* 节点卡片：小图 + 一行字；悬停放大为大图 + 文字（锚定上边缘，悬停不抖动） */
 .c-bubble.c-node {
-  width: 138px;
-  padding: 9px 11px;
-  transform: translate(-50%, calc(100% + var(--drop, 30px)));
+  width: 84px;
+  padding: 4px;
+  top: calc(46% + var(--drop, 22px));
+  transform: translateX(-50%);
+  transform-origin: 50% 0;
+  transition: width 0.22s, transform 0.22s, box-shadow 0.22s, border-color 0.22s;
 }
 .c-bubble.c-node::before {
-  top: calc(-1 * (var(--drop, 30px) - 8px));
-  height: calc(var(--drop, 30px) - 8px);
+  top: calc(-1 * (var(--drop, 22px) - 6px));
+  height: calc(var(--drop, 22px) - 6px);
 }
 .c-bubble.c-node::after {
-  top: -7px; bottom: auto;
+  top: -6px; bottom: auto;
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   border-right: none; border-bottom: none;
 }
-.c-bubble.c-node.big { transform: translate(-50%, calc(100% + var(--drop, 30px))) scale(1); }
-.c-bubble.c-node .b-name { font-size: 12px; }
-.c-bubble.c-node .b-desc { display: none; margin-top: 5px; }
-.c-bubble.c-node.big { width: 172px; }
-.c-bubble.c-node.big .b-desc { display: block; }
+.c-bubble.c-node .n-img {
+  display: block;
+  width: 72px; height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin: 0 auto;
+}
+.c-bubble.c-node .n-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--card);
+  opacity: 0.9;
+}
+.c-bubble.c-node .b-name {
+  font-size: 10.5px;
+  letter-spacing: 0;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 3px;
+  text-align: center;
+}
+.c-bubble.c-node .b-range,
+.c-bubble.c-node .b-desc { display: none; }
+.c-bubble.c-node.big {
+  width: 190px;
+  padding: 8px;
+  transform: translateX(-50%);
+  border-color: var(--accent);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+  z-index: 8;
+}
+.c-bubble.c-node.big .n-img { width: 100%; height: 104px; }
+.c-bubble.c-node.big .b-name {
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-top: 5px;
+  white-space: normal;
+  text-align: left;
+}
+.c-bubble.c-node.big .b-range { display: block; font-size: 10px; margin: 2px 0 5px; }
+.c-bubble.c-node.big .b-desc { display: block; font-size: 10.5px; line-height: 1.5; }
 
-.c-axis { position: absolute; left: 20px; right: 20px; top: 86%; height: 30px; }
+.c-axis { position: absolute; left: 20px; right: 20px; top: 84%; height: 30px; }
 .c-tick {
   position: absolute;
   font-size: 10px; color: var(--text-2);
@@ -535,4 +670,22 @@ onBeforeUnmount(() => {
 .c-tick.future { opacity: 0.6; }
 
 .hint { font-size: 11px; color: var(--text-2); margin-top: 12px; }
+
+/* 缩放反馈小提示 */
+.c-zoom-tip {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 11px;
+  pointer-events: none;
+  z-index: 9;
+}
+.c-fade-enter-active, .c-fade-leave-active { transition: opacity 0.25s; }
+.c-fade-enter-from, .c-fade-leave-to { opacity: 0; }
 </style>

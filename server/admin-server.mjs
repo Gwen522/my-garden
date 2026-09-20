@@ -143,6 +143,16 @@ const server = createServer(async (req, res) => {
         await writeJson(file, list)
         return sendJSON(res, 200, { ok: true, id: item.id })
       }
+      if (req.method === 'PUT') {
+        const id = url.searchParams.get('id')
+        const item = await readBody(req)
+        const list = await readJson(file, [])
+        const i = list.findIndex((x) => x.id === id)
+        if (i < 0) return sendJSON(res, 404, { ok: false, error: '未找到该条目' })
+        list[i] = { ...list[i], ...item, id }
+        await writeJson(file, list)
+        return sendJSON(res, 200, { ok: true })
+      }
       if (req.method === 'DELETE') {
         const id = url.searchParams.get('id')
         const list = await readJson(file, [])

@@ -79,7 +79,8 @@
               </label>
               <label>概括 <input id="pSummary" type="text" placeholder="一句话概括" /></label>
             </div>
-            <button type="submit" class="btn-ghost">添加时期</button>
+            <button type="submit" id="periodSubmitBtn" class="btn-ghost">添加时期</button>
+            <button type="button" id="periodCancelBtn" class="btn-del" style="display:none">取消编辑</button>
           </form>
           <ul id="periodList" class="post-list"></ul>
         </div>
@@ -93,7 +94,9 @@
               <label>地点 <input id="nLoc" type="text" placeholder="如：山东泰安" /></label>
             </div>
             <label>描述 <input id="nDesc" type="text" placeholder="一句话" /></label>
-            <button type="submit" class="btn-ghost">添加节点</button>
+            <label>图片 URL <input id="nImage" type="url" placeholder="https://...（可选，展示在节点卡片上）" /></label>
+            <button type="submit" id="nodeSubmitBtn" class="btn-ghost">添加节点</button>
+            <button type="button" id="nodeCancelBtn" class="btn-del" style="display:none">取消编辑</button>
           </form>
           <ul id="nodeList" class="post-list"></ul>
         </div>

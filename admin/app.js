@@ -54,7 +54,25 @@ async function refreshStatus() {
   }
 }
 
-// ---- 时期 / 节点 ----
+// ---- 时期 / 节点（支持添加 / 编辑 / 删除） ----
+let editPeriodId = null
+let editNodeId = null
+
+function resetPeriodForm() {
+  editPeriodId = null
+  $('pName').value = ''; $('pStart').value = ''; $('pEnd').value = ''
+  $('pSummary').value = ''; $('pParent').value = ''
+  $('periodSubmitBtn').textContent = '添加时期'
+  $('periodCancelBtn').style.display = 'none'
+}
+function resetNodeForm() {
+  editNodeId = null
+  $('nDate').value = ''; $('nTitle').value = ''; $('nLoc').value = ''
+  $('nDesc').value = ''; $('nImage').value = ''
+  $('nodeSubmitBtn').textContent = '添加节点'
+  $('nodeCancelBtn').style.display = 'none'
+}
+
 async function loadPeriods() {
   const list = await api('/api/periods')
   $('periodCount').textContent = `（${list.length} 个）`
@@ -81,6 +99,22 @@ async function loadPeriods() {
     m.className = 'post-meta'
     m.textContent = `${p.start} → ${p.end || '至今'}` + (p.summary ? ` · ${p.summary}` : '')
     info.append(t, m)
+    const ops = document.createElement('div')
+    ops.className = 'post-ops'
+    const edit = document.createElement('button')
+    edit.className = 'btn-ghost'
+    edit.textContent = '编辑'
+    edit.onclick = () => {
+      editPeriodId = p.id
+      $('pName').value = p.name || ''
+      $('pStart').value = p.start || ''
+      $('pEnd').value = p.end || ''
+      $('pSummary').value = p.summary || ''
+      $('pParent').value = p.parentId || ''
+      $('periodSubmitBtn').textContent = '保存修改'
+      $('periodCancelBtn').style.display = 'inline-block'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
     const del = document.createElement('button')
     del.className = 'btn-del'
     del.textContent = '删除'
@@ -90,7 +124,8 @@ async function loadPeriods() {
       await loadPeriods()
       await refreshStatus()
     }
-    li.append(info, del)
+    ops.append(edit, del)
+    li.append(info, ops)
     ul.append(li)
   }
 }
@@ -112,6 +147,22 @@ async function loadNodes() {
     m.className = 'post-meta'
     m.textContent = `${n.date}` + (n.location ? ` · ${n.location}` : '') + (n.desc ? ` · ${n.desc}` : '')
     info.append(t, m)
+    const ops = document.createElement('div')
+    ops.className = 'post-ops'
+    const edit = document.createElement('button')
+    edit.className = 'btn-ghost'
+    edit.textContent = '编辑'
+    edit.onclick = () => {
+      editNodeId = n.id
+      $('nDate').value = n.date || ''
+      $('nTitle').value = n.title || ''
+      $('nLoc').value = n.location || ''
+      $('nDesc').value = n.desc || ''
+      $('nImage').value = n.image || ''
+      $('nodeSubmitBtn').textContent = '保存修改'
+      $('nodeCancelBtn').style.display = 'inline-block'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
     const del = document.createElement('button')
     del.className = 'btn-del'
     del.textContent = '删除'
@@ -121,7 +172,8 @@ async function loadNodes() {
       await loadNodes()
       await refreshStatus()
     }
-    li.append(info, del)
+    ops.append(edit, del)
+    li.append(info, ops)
     ul.append(li)
   }
 }
@@ -136,35 +188,41 @@ $('periodForm').addEventListener('submit', async (e) => {
       summary: $('pSummary').value.trim(),
     }
     if ($('pParent').value) body.parentId = $('pParent').value
-    await api('/api/periods', {
-      method: 'POST',
+    const url = editPeriodId ? `/api/periods?id=${editPeriodId}` : '/api/periods'
+    await api(url, {
+      method: editPeriodId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    $('pName').value = ''; $('pStart').value = ''; $('pEnd').value = ''; $('pSummary').value = ''
+    resetPeriodForm()
     await loadPeriods()
     await refreshStatus()
-  } catch (err) { alert('添加失败：' + err.message) }
+  } catch (err) { alert((editPeriodId ? '更新' : '添加') + '失败：' + err.message) }
 })
+$('periodCancelBtn').addEventListener('click', resetPeriodForm)
 
 $('nodeForm').addEventListener('submit', async (e) => {
   e.preventDefault()
   try {
-    await api('/api/nodes', {
-      method: 'POST',
+    const body = {
+      date: $('nDate').value,
+      title: $('nTitle').value.trim(),
+      location: $('nLoc').value.trim(),
+      desc: $('nDesc').value.trim(),
+      image: $('nImage').value.trim(),
+    }
+    const url = editNodeId ? `/api/nodes?id=${editNodeId}` : '/api/nodes'
+    await api(url, {
+      method: editNodeId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: $('nDate').value,
-        title: $('nTitle').value.trim(),
-        location: $('nLoc').value.trim(),
-        desc: $('nDesc').value.trim(),
-      }),
+      body: JSON.stringify(body),
     })
-    $('nDate').value = ''; $('nTitle').value = ''; $('nLoc').value = ''; $('nDesc').value = ''
+    resetNodeForm()
     await loadNodes()
     await refreshStatus()
-  } catch (err) { alert('添加失败：' + err.message) }
+  } catch (err) { alert((editNodeId ? '更新' : '添加') + '失败：' + err.message) }
 })
+$('nodeCancelBtn').addEventListener('click', resetNodeForm)
 
 async function doPush() {
   $('publishBtn').disabled = true
