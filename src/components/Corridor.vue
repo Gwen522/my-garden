@@ -152,7 +152,7 @@ const offsets = computed(() => {
 
 // ---------- 交互 ----------
 const stripRef = ref(null)
-const scale = ref(1.6)
+const scale = ref(1.4)
 const tx = ref(0)
 const ty = ref(0)
 const drag = ref(null)
@@ -181,14 +181,17 @@ function zoomAt(mx, factor) {
   scale.value = ns
   clamp()
 }
+// 初始/复位：整条时间线铺满画廊宽度
 function applyView() {
   if (!stripRef.value) return
-  scale.value = 1.6
-  tx.value = cw() * 0.5 - layout.value.nowX * scale.value
+  const w = cw()
+  scale.value = Math.max(0.6, w / 1600)
+  tx.value = (w - TRACK_W * scale.value) / 2
   ty.value = 0
   clamp()
 }
 function onWheel(e) {
+  e.preventDefault()
   const r = stripRef.value.getBoundingClientRect()
   zoomAt(e.clientX - r.left, e.deltaY < 0 ? 1.08 : 0.92)
 }
@@ -217,9 +220,29 @@ function onTrackClick(e) {
 
 onMounted(() => {
   applyView()
+  const el = stripRef.value
+  if (!el) return
+  // 原生监听（与 demo 同款），确保滚轮缩放/拖拽在各类浏览器中都生效
+  el.addEventListener('wheel', onWheel, { passive: false })
+  el.addEventListener('pointerdown', onDown)
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerup', onUp)
+  el.addEventListener('pointercancel', onUp)
+  el.addEventListener('dblclick', applyView)
   window.addEventListener('resize', applyView)
 })
-onBeforeUnmount(() => window.removeEventListener('resize', applyView))
+onBeforeUnmount(() => {
+  const el = stripRef.value
+  if (el) {
+    el.removeEventListener('wheel', onWheel)
+    el.removeEventListener('pointerdown', onDown)
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerup', onUp)
+    el.removeEventListener('pointercancel', onUp)
+    el.removeEventListener('dblclick', applyView)
+  }
+  window.removeEventListener('resize', applyView)
+})
 </script>
 
 <template>
@@ -237,9 +260,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', applyView))
       </div>
     </div>
 
-    <div v-if="layout.segs.length" ref="strip" class="c-strip"
-         @wheel.prevent="onWheel" @pointerdown="onDown" @pointermove="onMove"
-         @pointerup="onUp" @pointercancel="onUp">
+    <div v-if="layout.segs.length" ref="strip" class="c-strip">
       <div class="c-world" :style="{ transform: worldTransform }">
         <div class="c-track" @click="onTrackClick">
           <div class="c-ribbon"></div>
@@ -307,12 +328,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', applyView))
 </template>
 
 <style scoped>
+.corridor { width: 100%; }
 .corridor-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 14px;
+  margin: 0 auto 14px;
+  padding: 0 20px;
+  max-width: 720px;
   flex-wrap: wrap;
 }
 .corridor-tools { text-align: right; }
@@ -332,11 +356,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', applyView))
 
 .c-strip {
   position: relative;
-  height: 460px;
+  width: 100%;
+  height: 540px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg);
+  background: transparent;
   cursor: grab;
   touch-action: none;
   user-select: none;

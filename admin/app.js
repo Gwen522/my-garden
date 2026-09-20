@@ -1,5 +1,13 @@
 const $ = (id) => document.getElementById(id)
 
+// ---- 分页：设置 / 画廊 ----
+document.querySelectorAll('.tab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn))
+    document.querySelectorAll('.tab-page').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + btn.dataset.tab))
+  })
+})
+
 async function api(path, opts) {
   const res = await fetch(path, opts)
   const data = await res.json().catch(() => ({}))
@@ -158,10 +166,24 @@ $('nodeForm').addEventListener('submit', async (e) => {
   } catch (err) { alert('添加失败：' + err.message) }
 })
 
-$('settingsForm').addEventListener('submit', async (e) => {
-  e.preventDefault()
+async function doPush() {
   $('publishBtn').disabled = true
   $('publishBtn').textContent = '发布中…'
+  try {
+    const r = await api('/api/push', { method: 'POST' })
+    alert('已发布' + (r.commit ? `：${r.commit}` : '（无改动）'))
+  } catch (err) {
+    alert('发布失败：' + err.message)
+  } finally {
+    $('publishBtn').disabled = false
+    $('publishBtn').textContent = '保存并发布'
+    await refreshStatus()
+  }
+}
+$('publishBtn').addEventListener('click', doPush)
+
+$('settingsForm').addEventListener('submit', async (e) => {
+  e.preventDefault()
   try {
     await api('/api/settings', {
       method: 'POST',
@@ -177,15 +199,11 @@ $('settingsForm').addEventListener('submit', async (e) => {
         theme: $('sTheme').value,
       }),
     })
-    const r = await api('/api/push', { method: 'POST' })
     $('siteName').textContent = $('sTitle').value.trim() || '管理面板'
-    alert('已保存并发布' + (r.commit ? `：${r.commit}` : '（无改动）'))
+    alert('设置已保存，点右上角「保存并发布」即可上线')
     await refreshStatus()
   } catch (err) {
-    alert('发布失败：' + err.message)
-  } finally {
-    $('publishBtn').disabled = false
-    $('publishBtn').textContent = '保存并发布'
+    alert('保存失败：' + err.message)
   }
 })
 

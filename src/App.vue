@@ -33,9 +33,9 @@ function calcAge(birthday) {
   if (n.getDate() < b.getDate()) m--
   return { y, m }
 }
-const ageText = computed(() => {
+const ageYears = computed(() => {
   const a = calcAge(settings.value?.birthday)
-  return a ? `${a.y} 岁 ${a.m} 个月` : '待填写'
+  return a ? `${a.y} 年` : '待填写'
 })
 const siteDays = computed(() => {
   if (!settings.value?.siteCreated) return '待填写'
@@ -63,37 +63,39 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page" v-if="settings">
+  <div v-if="settings" class="shell">
     <button class="mode-toggle" @click="toggleMode" :title="mode === 'dark' ? '切到白天' : '切到黑夜'">
       {{ mode === 'dark' ? '昼' : '夜' }}
     </button>
 
-    <header class="hero">
-      <img v-if="settings.avatar" class="avatar" :src="settings.avatar" alt="头像" />
-      <div>
-        <h1 class="garden-name">{{ settings.title }}</h1>
-        <p v-if="settings.nickname" class="nickname">{{ settings.nickname }}</p>
-        <ul v-if="settings.attrs && settings.attrs.length" class="attrs">
-          <li v-for="a in settings.attrs" :key="a[0]">
-            <span class="attr-k">{{ a[0] }}</span><span class="attr-v">{{ a[1] }}</span>
-          </li>
-        </ul>
-        <p v-if="settings.currentStatus" class="status">{{ settings.currentStatus }}</p>
-      </div>
-    </header>
+    <div class="page">
+      <header class="hero">
+        <img v-if="settings.avatar" class="avatar" :src="settings.avatar" alt="头像" />
+        <div>
+          <h1 class="garden-name">{{ settings.title }}</h1>
+          <p v-if="settings.nickname" class="nickname">{{ settings.nickname }}</p>
+          <ul v-if="settings.attrs && settings.attrs.length" class="attrs">
+            <li v-for="a in settings.attrs" :key="a[0]">
+              <span class="attr-k">{{ a[0] }}</span><span class="attr-v">{{ a[1] }}</span>
+            </li>
+          </ul>
+          <p v-if="settings.currentStatus" class="status">{{ settings.currentStatus }}</p>
+        </div>
+      </header>
 
-    <section class="stats">
-      <div class="stat">
-        <span class="num">{{ ageText }}</span>
-        <span class="label">年龄 · 自动计算</span>
-      </div>
-      <div class="stat">
-        <span class="num">{{ siteDays }}</span>
-        <span class="label">建站 · 自动计算</span>
-      </div>
-    </section>
+      <section class="stats">
+        <div class="stat">
+          <span class="num">{{ ageYears }}</span>
+          <span class="label">登录地球online</span>
+        </div>
+        <div class="stat">
+          <span class="num">{{ siteDays }}</span>
+          <span class="label">本站已成立</span>
+        </div>
+      </section>
+    </div>
 
-    <section class="room corridor">
+    <section class="corridor-zone">
       <Corridor
         :periods="periods"
         :nodes="nodes"
@@ -101,7 +103,7 @@ onMounted(async () => {
       />
     </section>
 
-    <footer>框架设计 v0.4 · 回廊 v2</footer>
+    <footer>框架设计 v0.4 · 回廊 v3</footer>
   </div>
   <div v-else-if="error" class="page">{{ error }}</div>
   <div v-else class="page">加载中…</div>

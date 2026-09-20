@@ -21,75 +21,86 @@
       </div>
     </header>
 
+    <nav class="tabs">
+      <button class="tab active" data-tab="settings">设置</button>
+      <button class="tab" data-tab="gallery">画廊</button>
+    </nav>
+
     <main>
-      <section class="card wide">
-        <h2>园子设置</h2>
-        <p id="siteCreatedLine" class="muted" style="margin-bottom:10px;"></p>
-        <form id="settingsForm">
-          <label>站名 <input id="sTitle" type="text" placeholder="站名" /></label>
-          <div class="row">
-            <label>昵称 <input id="sNickname" type="text" placeholder="展示名" /></label>
-            <label>目前状态 <input id="sStatus" type="text" placeholder="如：南开大学在读" /></label>
-          </div>
-          <label>属性（每行一个：标签：值）
-            <textarea id="sAttrs" rows="4" placeholder="出生地：福建&#10;本科：南开大学"></textarea>
-          </label>
-          <label>头像 URL <input id="sAvatar" type="url" placeholder="https://avatars.githubusercontent.com/Gwen522?s=200" /></label>
-          <div class="row">
-            <label>生日 <input id="sBirthday" type="date" /></label>
-            <label>时间窗（月）
-              <select id="sWindow">
-                <option value="1">1</option>
-                <option value="3">3</option>
-                <option value="6">6</option>
-              </select>
+      <!-- ===== 设置页 ===== -->
+      <section id="tab-settings" class="tab-page active">
+        <div class="card wide">
+          <h2>园子设置</h2>
+          <p id="siteCreatedLine" class="muted" style="margin-bottom:10px;"></p>
+          <form id="settingsForm">
+            <label>站名 <input id="sTitle" type="text" placeholder="站名" /></label>
+            <div class="row">
+              <label>昵称 <input id="sNickname" type="text" placeholder="展示名" /></label>
+              <label>目前状态 <input id="sStatus" type="text" placeholder="如：南开大学在读" /></label>
+            </div>
+            <label>属性（每行一个：标签：值）
+              <textarea id="sAttrs" rows="4" placeholder="出生地：福建&#10;本科：南开大学"></textarea>
             </label>
-            <label>默认风格
-              <select id="sTheme">
-                <option value="paper">纸墨</option>
-                <option value="neon">霓虹</option>
-              </select>
-            </label>
-          </div>
-          <button type="submit" class="btn-primary btn-block">保存并发布</button>
-        </form>
+            <label>头像 URL <input id="sAvatar" type="url" placeholder="https://avatars.githubusercontent.com/Gwen522?s=200" /></label>
+            <div class="row">
+              <label>生日 <input id="sBirthday" type="date" /></label>
+              <label>时间窗（月）
+                <select id="sWindow">
+                  <option value="1">1</option>
+                  <option value="3">3</option>
+                  <option value="6">6</option>
+                </select>
+              </label>
+              <label>默认风格
+                <select id="sTheme">
+                  <option value="paper">纸墨</option>
+                  <option value="neon">霓虹</option>
+                </select>
+              </label>
+            </div>
+            <button type="submit" class="btn-ghost btn-block">保存设置（改完点右上角「保存并发布」上线）</button>
+          </form>
+        </div>
       </section>
 
-      <section class="card wide">
-        <h2>时期管理 <span class="count" id="periodCount"></span></h2>
-        <form id="periodForm">
-          <div class="row">
-            <label>名称 <input id="pName" type="text" placeholder="如：南开" /></label>
-            <label>开始 <input id="pStart" type="month" /></label>
-            <label>结束（空=至今）<input id="pEnd" type="month" /></label>
-          </div>
-          <div class="row">
-            <label>所属时期
-              <select id="pParent"><option value="">— 主时期 —</option></select>
-            </label>
-            <label>概括 <input id="pSummary" type="text" placeholder="一句话概括" /></label>
-          </div>
-          <button type="submit" class="btn-ghost">添加时期</button>
-        </form>
-        <ul id="periodList" class="post-list"></ul>
-      </section>
+      <!-- ===== 画廊页 ===== -->
+      <section id="tab-gallery" class="tab-page">
+        <div class="card wide">
+          <h2>时期管理 <span class="count" id="periodCount"></span></h2>
+          <form id="periodForm">
+            <div class="row">
+              <label>名称 <input id="pName" type="text" placeholder="如：南开" /></label>
+              <label>开始 <input id="pStart" type="month" /></label>
+              <label>结束（空=至今）<input id="pEnd" type="month" /></label>
+            </div>
+            <div class="row">
+              <label>所属时期（选=子时期）
+                <select id="pParent"><option value="">— 主时期 —</option></select>
+              </label>
+              <label>概括 <input id="pSummary" type="text" placeholder="一句话概括" /></label>
+            </div>
+            <button type="submit" class="btn-ghost">添加时期</button>
+          </form>
+          <ul id="periodList" class="post-list"></ul>
+        </div>
 
-      <section class="card wide">
-        <h2>节点管理 <span class="count" id="nodeCount"></span></h2>
-        <form id="nodeForm">
-          <div class="row">
-            <label>日期 <input id="nDate" type="date" /></label>
-            <label>标题 <input id="nTitle" type="text" placeholder="如：清明登泰山" /></label>
-            <label>地点 <input id="nLoc" type="text" placeholder="如：山东泰安" /></label>
-          </div>
-          <label>描述 <input id="nDesc" type="text" placeholder="一句话" /></label>
-          <button type="submit" class="btn-ghost">添加节点</button>
-        </form>
-        <ul id="nodeList" class="post-list"></ul>
+        <div class="card wide">
+          <h2>节点管理 <span class="count" id="nodeCount"></span></h2>
+          <form id="nodeForm">
+            <div class="row">
+              <label>日期 <input id="nDate" type="date" /></label>
+              <label>标题 <input id="nTitle" type="text" placeholder="如：清明登泰山" /></label>
+              <label>地点 <input id="nLoc" type="text" placeholder="如：山东泰安" /></label>
+            </div>
+            <label>描述 <input id="nDesc" type="text" placeholder="一句话" /></label>
+            <button type="submit" class="btn-ghost">添加节点</button>
+          </form>
+          <ul id="nodeList" class="post-list"></ul>
+        </div>
       </section>
     </main>
 
-    <footer class="foot">本地面板 · 只监听 127.0.0.1 · 保存并发布 = 写文件 + git 提交 + 推送</footer>
+    <footer class="foot">本地面板 · 只监听 127.0.0.1 · 「保存并发布」= 写文件 + git 提交 + 推送</footer>
   </div>
   <script src="/app.js"></script>
 </body>

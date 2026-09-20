@@ -177,9 +177,16 @@ body {
 .room h2 { font-family: var(--font-serif); font-size: 17px; letter-spacing: 2px; }
 .corridor { text-align: left; }
 
+/* ===== 回廊画廊（全宽、透明） ===== */
+.corridor-zone {
+  width: 100%;
+  padding: 6px 0 10px;
+}
+
 footer {
   text-align: center;
   color: var(--text-2);
   font-size: 12px;
-  margin-top: 40px;
+  margin-top: 48px;
+  padding-bottom: 60px;
 }
