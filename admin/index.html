@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理面板</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body data-theme="paper">
+  <div class="page">
+
+    <header class="topbar">
+      <div class="brand">
+        <span id="siteName" class="site-name">管理面板</span>
+        <span class="badge">仅本机</span>
+      </div>
+      <div class="topbar-right">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText" class="status-text">检查中…</span>
+        <button id="themeToggle" class="btn-ghost">霓虹 / 纸墨</button>
+        <button id="publishBtn" class="btn-primary">保存并发布</button>
+      </div>
+    </header>
+
+    <main class="cols">
+
+      <section class="card">
+        <h2>写点什么</h2>
+        <form id="postForm">
+          <label>标题 <input id="fTitle" type="text" placeholder="给这篇起个名字" /></label>
+          <div class="row">
+            <label>日期 <input id="fDate" type="date" /></label>
+            <label>类型
+              <select id="fType">
+                <option value="diary">日记</option>
+                <option value="essay">随笔</option>
+                <option value="game">游戏</option>
+                <option value="anime">动漫</option>
+                <option value="travel">足迹</option>
+                <option value="poetry">诗词</option>
+              </select>
+            </label>
+            <label>可见
+              <select id="fVisible">
+                <option value="private">仅自己</option>
+                <option value="public">公开</option>
+              </select>
+            </label>
+          </div>
+          <label>标签 <input id="fTags" type="text" placeholder="用逗号分隔，如：考研, 日常" /></label>
+          <label>正文 <textarea id="fBody" rows="8" placeholder="写点什么…"></textarea></label>
+          <button type="submit" class="btn-primary btn-block">保存到本地</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>园子设置</h2>
+        <form id="settingsForm">
+          <label>站名 <input id="sTitle" type="text" placeholder="站名" /></label>
+          <label>关于我 <textarea id="sAbout" rows="3" placeholder="一句话介绍自己"></textarea></label>
+          <div class="row">
+            <label>生日 <input id="sBirthday" type="date" /></label>
+            <label>时间窗（月）
+              <select id="sWindow">
+                <option value="1">1</option>
+                <option value="3">3</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <label>默认风格
+              <select id="sTheme">
+                <option value="paper">纸墨</option>
+                <option value="neon">霓虹</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="btn-ghost btn-block">保存设置</button>
+        </form>
+      </section>
+
+      <section class="card wide">
+        <h2>已有内容 <span id="postCount" class="count"></span></h2>
+        <ul id="postList" class="post-list"></ul>
+        <p id="emptyTip" class="muted" hidden>还没有内容，先写一篇。</p>
+      </section>
+
+    </main>
+
+    <footer class="foot">本地面板 · 只监听 127.0.0.1 · 保存并发布 = 写文件 + git 提交 + 推送</footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
