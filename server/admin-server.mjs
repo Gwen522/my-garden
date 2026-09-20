@@ -31,13 +31,18 @@ function sendJSON(res, code, data) {
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
-    let data = ''
+    const chunks = []
+    let size = 0
     req.on('data', (c) => {
-      data += c
-      if (data.length > 2e6) { reject(new Error('内容过大')); req.destroy() }
+      chunks.push(c)
+      size += c.length
+      if (size > 2e6) { reject(new Error('内容过大')); req.destroy() }
     })
     req.on('end', () => {
-      try { resolve(data ? JSON.parse(data) : {}) } catch (e) { reject(e) }
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8')
+        resolve(raw ? JSON.parse(raw) : {})
+      } catch (e) { reject(e) }
     })
   })
 }
@@ -87,7 +92,10 @@ const server = createServer(async (req, res) => {
       const body = await readBody(req)
       // 合并而非覆盖：保留 siteCreated 等面板里没有的字段
       const existing = JSON.parse(await readFile(SETTINGS, 'utf-8'))
-      await writeFile(SETTINGS, JSON.stringify({ ...existing, ...body }, null, 2) + '\n', 'utf-8')
+      const merged = { ...existing, ...body }
+      const out = JSON.stringify(merged, null, 2) + '\n'
+      JSON.parse(out) // 写前校验：非法内容不落盘
+      await writeFile(SETTINGS, out, 'utf-8')
       return sendJSON(res, 200, { ok: true })
     }
     if (p === '/api/posts' && req.method === 'GET') {

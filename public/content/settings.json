@@ -1,8 +1,25 @@
 {
   "title": "我的花园",
-  "about": "我还在想怎么介绍自己。",
   "nickname": "Gwen",
   "avatar": "https://avatars.githubusercontent.com/Gwen522?s=200",
+  "attrs": [
+    [
+      "出生地",
+      "福建"
+    ],
+    [
+      "本科",
+      "南开大学 · 软件工程"
+    ],
+    [
+      "星座",
+      "双子座"
+    ],
+    [
+      "现居",
+      "天津"
+    ]
+  ],
   "currentStatus": "目前 · 南开大学在读",
   "birthday": "2005-05-22",
   "siteCreated": "2026-09-20",

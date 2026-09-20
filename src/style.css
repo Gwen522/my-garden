@@ -103,8 +103,12 @@ body {
   letter-spacing: 3px;
 }
 .nickname { color: var(--accent); font-size: 13px; margin-top: 2px; letter-spacing: 1px; }
-.about { color: var(--text-2); font-size: 14px; margin-top: 7px; }
-.status { color: var(--accent-2); font-size: 12px; margin-top: 6px; }
+.attrs { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 9px; }
+.attrs li { font-size: 12px; }
+.attr-k { color: var(--text-2); }
+.attr-k::after { content: ' · '; }
+.attr-v { color: var(--text); }
+.status { color: var(--accent-2); font-size: 12px; margin-top: 7px; }
 
 .stats {
   display: flex;

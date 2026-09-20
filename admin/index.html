@@ -6,7 +6,7 @@
   <title>管理面板</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
-<body data-theme="paper">
+<body>
   <div class="page">
 
     <header class="topbar">
@@ -17,52 +17,23 @@
       <div class="topbar-right">
         <span id="statusDot" class="dot"></span>
         <span id="statusText" class="status-text">检查中…</span>
-        <button id="themeToggle" class="btn-ghost">霓虹 / 纸墨</button>
         <button id="publishBtn" class="btn-primary">保存并发布</button>
       </div>
     </header>
 
-    <main class="cols">
-
-      <section class="card">
-        <h2>写点什么</h2>
-        <form id="postForm">
-          <label>标题 <input id="fTitle" type="text" placeholder="给这篇起个名字" /></label>
-          <div class="row">
-            <label>日期 <input id="fDate" type="date" /></label>
-            <label>类型
-              <select id="fType">
-                <option value="diary">日记</option>
-                <option value="essay">随笔</option>
-                <option value="game">游戏</option>
-                <option value="anime">动漫</option>
-                <option value="travel">足迹</option>
-                <option value="poetry">诗词</option>
-              </select>
-            </label>
-            <label>可见
-              <select id="fVisible">
-                <option value="private">仅自己</option>
-                <option value="public">公开</option>
-              </select>
-            </label>
-          </div>
-          <label>标签 <input id="fTags" type="text" placeholder="用逗号分隔，如：考研, 日常" /></label>
-          <label>正文 <textarea id="fBody" rows="8" placeholder="写点什么…"></textarea></label>
-          <button type="submit" class="btn-primary btn-block">保存到本地</button>
-        </form>
-      </section>
-
-      <section class="card">
+    <main>
+      <section class="card wide">
         <h2>园子设置</h2>
         <p id="siteCreatedLine" class="muted" style="margin-bottom:10px;"></p>
         <form id="settingsForm">
           <label>站名 <input id="sTitle" type="text" placeholder="站名" /></label>
-          <label>关于我 <textarea id="sAbout" rows="3" placeholder="一句话介绍自己"></textarea></label>
           <div class="row">
             <label>昵称 <input id="sNickname" type="text" placeholder="展示名" /></label>
             <label>目前状态 <input id="sStatus" type="text" placeholder="如：南开大学在读" /></label>
           </div>
+          <label>属性（每行一个：标签：值）
+            <textarea id="sAttrs" rows="4" placeholder="出生地：福建&#10;本科：南开大学"></textarea>
+          </label>
           <label>头像 URL <input id="sAvatar" type="url" placeholder="https://avatars.githubusercontent.com/Gwen522?s=200" /></label>
           <div class="row">
             <label>生日 <input id="sBirthday" type="date" /></label>
@@ -80,16 +51,9 @@
               </select>
             </label>
           </div>
-          <button type="submit" class="btn-ghost btn-block">保存设置</button>
+          <button type="submit" class="btn-primary btn-block">保存并发布</button>
         </form>
       </section>
-
-      <section class="card wide">
-        <h2>已有内容 <span id="postCount" class="count"></span></h2>
-        <ul id="postList" class="post-list"></ul>
-        <p id="emptyTip" class="muted" hidden>还没有内容，先写一篇。</p>
-      </section>
-
     </main>
 
     <footer class="foot">本地面板 · 只监听 127.0.0.1 · 保存并发布 = 写文件 + git 提交 + 推送</footer>

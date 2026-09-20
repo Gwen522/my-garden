@@ -66,7 +66,11 @@ onMounted(async () => {
       <div>
         <h1 class="garden-name">{{ settings.title }}</h1>
         <p v-if="settings.nickname" class="nickname">{{ settings.nickname }}</p>
-        <p class="about">{{ settings.about }}</p>
+        <ul v-if="settings.attrs && settings.attrs.length" class="attrs">
+          <li v-for="a in settings.attrs" :key="a[0]">
+            <span class="attr-k">{{ a[0] }}</span><span class="attr-v">{{ a[1] }}</span>
+          </li>
+        </ul>
         <p v-if="settings.currentStatus" class="status">{{ settings.currentStatus }}</p>
       </div>
     </header>
