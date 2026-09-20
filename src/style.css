@@ -1,36 +1,116 @@
 :root {
-  --bg: #F4F3EE;
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-sans: 'Roboto', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
+}
+
+/* ===== 主题令牌 ===== */
+/* 纸墨 · 昼（默认） */
+:root,
+[data-theme='paper'] {
+  --bg: #F4F1E8;
+  --card: #FBF9F3;
+  --border: #E2DCCC;
+  --text: #2B2926;
+  --text-2: #6E6A5E;
+  --accent: #4A6B8A;
+  --accent-2: #8A5A2B;
+}
+/* 纸墨 · 夜 */
+[data-theme='paper'][data-mode='dark'] {
+  --bg: #1B1A17;
+  --card: #242219;
+  --border: #3A372C;
+  --text: #E8E4D8;
+  --text-2: #A29C8C;
+  --accent: #9FB6C9;
+  --accent-2: #C9A87C;
+}
+/* 霓虹 · 夜（默认） */
+[data-theme='neon'] {
+  --bg: #0B0E17;
+  --card: #131826;
+  --border: rgba(34, 211, 238, 0.25);
+  --text: #E6E8F0;
+  --text-2: #8B93A7;
+  --accent: #22D3EE;
+  --accent-2: #E879F9;
+}
+/* 霓虹 · 昼 */
+[data-theme='neon'][data-mode='light'] {
+  --bg: #EDF1F8;
   --card: #FFFFFF;
-  --border: #E4E3DD;
-  --text: #1A1B1C;
-  --text-2: #6B7280;
-  --accent: #5B9BD5;
+  --border: #C9D6E8;
+  --text: #1A2332;
+  --text-2: #5A6B85;
+  --accent: #0E7490;
+  --accent-2: #A21CAF;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Roboto', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
+  transition: background 0.4s, color 0.4s;
 }
 
 .page {
-  max-width: 640px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 48px 20px 60px;
 }
 
-.hero { margin-bottom: 28px; }
-.hero h1 { font-size: 28px; font-weight: 700; letter-spacing: 1px; }
-.hero .about { color: var(--text-2); font-size: 14px; margin-top: 8px; }
+/* ===== 昼夜按钮 ===== */
+.mode-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 14px;
+  font-family: var(--font-serif);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s;
+}
+.mode-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ===== 正厅 ===== */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 12px 0 32px;
+}
+.avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.garden-name {
+  font-family: var(--font-serif);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+.nickname { color: var(--accent); font-size: 13px; margin-top: 2px; letter-spacing: 1px; }
+.about { color: var(--text-2); font-size: 14px; margin-top: 7px; }
+.status { color: var(--accent-2); font-size: 12px; margin-top: 6px; }
 
 .stats {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 32px;
+  margin-bottom: 30px;
 }
 .stat {
   flex: 1 1 140px;
@@ -44,32 +124,17 @@ body {
 
 .room {
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border);
   border-radius: 16px;
-  padding: 20px 22px;
-  margin-bottom: 20px;
+  padding: 26px 22px;
+  text-align: center;
 }
-.room h2 { font-size: 16px; margin-bottom: 14px; }
-
-.post h3 { font-size: 17px; margin-bottom: 4px; }
-.post .meta { font-size: 12px; color: var(--text-2); margin-bottom: 12px; }
-.post .tag {
-  display: inline-block;
-  font-size: 11px;
-  color: #8A5A2B;
-  background: rgba(225,185,143,0.2);
-  border-radius: 999px;
-  padding: 1px 8px;
-  margin-left: 6px;
-}
-.post .body { font-size: 14px; }
-.post .body p { margin-bottom: 10px; }
-.post .body h1, .post .body h2, .post .body h3 { margin: 14px 0 8px; }
-.post .body ul { padding-left: 20px; margin-bottom: 10px; }
+.room h2 { font-family: var(--font-serif); font-size: 17px; letter-spacing: 2px; }
+.room-note { color: var(--text-2); font-size: 12px; margin-top: 8px; }
 
 footer {
   text-align: center;
-  color: #9AA0A6;
+  color: var(--text-2);
   font-size: 12px;
   margin-top: 40px;
 }

@@ -15,6 +15,9 @@ async function loadSettings() {
   const s = await api('/api/settings')
   $('sTitle').value = s.title || ''
   $('sAbout').value = s.about || ''
+  $('sNickname').value = s.nickname || ''
+  $('sStatus').value = s.currentStatus || ''
+  $('sAvatar').value = s.avatar || ''
   $('sBirthday').value = s.birthday || ''
   $('sWindow').value = String(s.timeWindowMonths || 3)
   $('sTheme').value = s.theme || 'paper'
@@ -108,6 +111,9 @@ $('settingsForm').addEventListener('submit', async (e) => {
       body: JSON.stringify({
         title: $('sTitle').value.trim(),
         about: $('sAbout').value.trim(),
+        nickname: $('sNickname').value.trim(),
+        currentStatus: $('sStatus').value.trim(),
+        avatar: $('sAvatar').value.trim(),
         birthday: $('sBirthday').value,
         timeWindowMonths: Number($('sWindow').value),
         theme: $('sTheme').value,

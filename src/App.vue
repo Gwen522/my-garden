@@ -2,45 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 
 const settings = ref(null)
-const post = ref(null)
 const error = ref('')
-
-function parseFrontmatter(text) {
-  const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/)
-  if (!m) return { meta: {}, body: text }
-  const meta = {}
-  for (const line of m[1].split('\n')) {
-    const i = line.indexOf(':')
-    if (i > 0) {
-      const k = line.slice(0, i).trim()
-      let v = line.slice(i + 1).trim()
-      if (v.startsWith('[')) v = v.slice(1, -1).split(',').map(s => s.trim())
-      meta[k] = v
-    }
-  }
-  return { meta, body: m[2].trim() }
-}
-
-function renderMd(text) {
-  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const lines = esc.split('\n')
-  let html = ''
-  let inList = false
-  function closeList() { if (inList) { html += '</ul>'; inList = false } }
-  for (const line of lines) {
-    if (/^###\s/.test(line)) { closeList(); html += '<h3>' + line.slice(4) + '</h3>' }
-    else if (/^##\s/.test(line)) { closeList(); html += '<h2>' + line.slice(3) + '</h2>' }
-    else if (/^#\s/.test(line)) { closeList(); html += '<h1>' + line.slice(2) + '</h1>' }
-    else if (/^[-*]\s/.test(line)) {
-      if (!inList) { inList = true; html += '<ul>' }
-      html += '<li>' + line.slice(2) + '</li>'
-    }
-    else if (line.trim() === '') { closeList() }
-    else { closeList(); html += '<p>' + line + '</p>' }
-  }
-  closeList()
-  return html
-}
+const mode = ref('light')
 
 function calcAge(birthday) {
   if (!birthday) return null
@@ -65,20 +28,27 @@ const siteDays = computed(() => {
   return d >= 0 ? `${d} 天` : '待填写'
 })
 
-const timeWindowLabel = computed(() =>
-  `${settings.value?.timeWindowMonths ?? 3} 个月`
-)
+// 主题：风格（settings.theme）+ 明暗（访客按钮，本地记住）
+function applyTheme() {
+  const t = settings.value?.theme || 'paper'
+  document.body.dataset.theme = t
+  const saved = localStorage.getItem('garden-mode')
+  mode.value = saved || (t === 'neon' ? 'dark' : 'light')
+  document.body.dataset.mode = mode.value
+}
+
+function toggleMode() {
+  mode.value = mode.value === 'dark' ? 'light' : 'dark'
+  document.body.dataset.mode = mode.value
+  localStorage.setItem('garden-mode', mode.value)
+}
 
 onMounted(async () => {
   try {
-    const [s, p] = await Promise.all([
-      fetch('./content/settings.json'),
-      fetch('./content/posts/0001-hello.md'),
-    ])
+    const s = await fetch('./content/settings.json')
     if (!s.ok) throw new Error('设置读取失败')
-    if (!p.ok) throw new Error('第一篇日记读取失败')
     settings.value = await s.json()
-    post.value = parseFrontmatter(await p.text())
+    applyTheme()
   } catch (e) {
     error.value = e.message
   }
@@ -87,9 +57,18 @@ onMounted(async () => {
 
 <template>
   <div class="page" v-if="settings">
+    <button class="mode-toggle" @click="toggleMode" :title="mode === 'dark' ? '切到白天' : '切到黑夜'">
+      {{ mode === 'dark' ? '昼' : '夜' }}
+    </button>
+
     <header class="hero">
-      <h1>{{ settings.title }}</h1>
-      <p class="about">{{ settings.about }}</p>
+      <img v-if="settings.avatar" class="avatar" :src="settings.avatar" alt="头像" />
+      <div>
+        <h1 class="garden-name">{{ settings.title }}</h1>
+        <p v-if="settings.nickname" class="nickname">{{ settings.nickname }}</p>
+        <p class="about">{{ settings.about }}</p>
+        <p v-if="settings.currentStatus" class="status">{{ settings.currentStatus }}</p>
+      </div>
     </header>
 
     <section class="stats">
@@ -99,28 +78,16 @@ onMounted(async () => {
       </div>
       <div class="stat">
         <span class="num">{{ siteDays }}</span>
-        <span class="label">花园已建 · 自动计算</span>
-      </div>
-      <div class="stat">
-        <span class="num">{{ timeWindowLabel }}</span>
-        <span class="label">时间窗 · 可在面板调整</span>
+        <span class="label">建站 · 自动计算</span>
       </div>
     </section>
 
     <section class="room">
-      <h2>日记阁</h2>
-      <article v-if="post" class="post">
-        <h3>{{ post.meta.title }}</h3>
-        <div class="meta">
-          {{ post.meta.date }} · {{ post.meta.type }}
-          <span v-if="post.meta.visible === 'private'" class="tag">仅自己</span>
-        </div>
-        <div class="body" v-html="renderMd(post.body)"></div>
-      </article>
-      <p v-else>还没有日记。</p>
+      <h2>回廊</h2>
+      <p class="room-note">人生历程（过去 · 现在 · 将来）时间线 · 建设中</p>
     </section>
 
-    <footer>框架设计 v0.1 · 更多房间建设中</footer>
+    <footer>框架设计 v0.3 · 正厅已落成</footer>
   </div>
   <div v-else-if="error" class="page">{{ error }}</div>
   <div v-else class="page">加载中…</div>
